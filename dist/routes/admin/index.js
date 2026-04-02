@@ -1,0 +1,24 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const auth_route_1 = __importDefault(require("./auth.route"));
+const cms_route_1 = __importDefault(require("./cms.route"));
+const email_route_1 = __importDefault(require("./email.route"));
+const faq_route_1 = __importDefault(require("./faq.route"));
+const user_route_1 = __importDefault(require("./user.route"));
+const subadmin_routes_1 = __importDefault(require("./subadmin.routes"));
+const permission_routes_1 = __importDefault(require("./permission.routes"));
+const product_route_1 = __importDefault(require("./product.route"));
+const adminRouter = (0, express_1.Router)();
+adminRouter.use("/auth", auth_route_1.default);
+adminRouter.use("/cms", cms_route_1.default);
+adminRouter.use("/emailTemplate", email_route_1.default);
+adminRouter.use("/faq", faq_route_1.default);
+adminRouter.use("/user", user_route_1.default);
+adminRouter.use('/subadmin', subadmin_routes_1.default);
+adminRouter.use('/permission', permission_routes_1.default);
+adminRouter.use('/product', product_route_1.default);
+exports.default = adminRouter;
