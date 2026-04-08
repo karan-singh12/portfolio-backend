@@ -11,6 +11,7 @@ export interface IProject extends Document {
     status: string; // "active" | "inactive" | "deleted"
     category?: string;
     whatIDid?: string[];
+    images?: string[];
     createdAt: Date;
     updatedAt: Date;
 }
@@ -26,7 +27,8 @@ const ProjectSchema = new Schema<IProject>(
         },
         status: { type: String, default: "active" },
         category: { type: String },
-        whatIDid: { type: [String], default: [] }
+        whatIDid: { type: [String], default: [] },
+        images: { type: [String], default: [] }
     },
     { timestamps: true }
 );
