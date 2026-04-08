@@ -10,6 +10,7 @@ export interface IProject extends Document {
     };
     status: string; // "active" | "inactive" | "deleted"
     category?: string;
+    whatIDid?: string[];
     createdAt: Date;
     updatedAt: Date;
 }
@@ -24,7 +25,8 @@ const ProjectSchema = new Schema<IProject>(
             href: { type: String, required: true }
         },
         status: { type: String, default: "active" },
-        category: { type: String }
+        category: { type: String },
+        whatIDid: { type: [String], default: [] }
     },
     { timestamps: true }
 );
