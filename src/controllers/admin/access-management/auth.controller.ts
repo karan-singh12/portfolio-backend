@@ -7,6 +7,9 @@ import { sendEmail } from "../../../utils/functions";
 import bcrypt from 'bcryptjs';
 import jwt from "jsonwebtoken";
 import { log } from "../../../utils/logger";
+import { uploadToCloudinary } from "../../../services/cloudinary.service";
+import path from "path";
+import appRoot from "app-root-path";
 
 interface AuthenticatedRequest extends Request {
   user?: { _id: string };
@@ -197,10 +200,12 @@ export const editProfile = async (req: AuthenticatedRequest, res: Response, next
     if (req.files) {
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
       if (files['resume']) {
-        updateData.resumeUrl = `/public/resume/${files['resume'][0].filename}`;
+        const filePath = path.join(appRoot.path, files['resume'][0].path);
+        updateData.resumeUrl = await uploadToCloudinary(filePath, 'resumes');
       }
       if (files['avatar']) {
-        updateData.avatarUrl = `/public/avatar/${files['avatar'][0].filename}`;
+        const filePath = path.join(appRoot.path, files['avatar'][0].path);
+        updateData.avatarUrl = await uploadToCloudinary(filePath, 'avatars');
       }
     }
 

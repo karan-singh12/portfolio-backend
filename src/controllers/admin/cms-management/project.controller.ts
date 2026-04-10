@@ -4,12 +4,26 @@ import { successResponseWithData } from "../../../utils/apiResponse";
 import { ERROR, SUCCESS } from "../../../utils/responseMssg";
 import { listing } from "../../../utils/functions";
 import asyncHandler from "express-async-handler";
+import { uploadToCloudinary, uploadMultipleToCloudinary } from "../../../services/cloudinary.service";
 
 export const addProject = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { title, link } = req.body;
         if (!title || !link || !link.href) return next(new Error("Title and Link Href are required"));
         
+        // Handle Cloudinary upload for thumbnail
+        if (req.body.thumbnail && req.body.thumbnail.startsWith('data:')) {
+            req.body.thumbnail = await uploadToCloudinary(req.body.thumbnail, 'projects/thumbnails');
+        }
+
+        // Handle Cloudinary upload for gallery images
+        if (req.body.images && Array.isArray(req.body.images)) {
+            const freshImages = req.body.images.filter((img: string) => img.startsWith('data:'));
+            const existingImages = req.body.images.filter((img: string) => !img.startsWith('data:'));
+            const uploadedImages = await uploadMultipleToCloudinary(freshImages, 'projects/gallery');
+            req.body.images = [...existingImages, ...uploadedImages];
+        }
+
         const result = await new ProjectModel(req.body).save();
         successResponseWithData(res, "Project added successfully", result);
     } catch (error) {
@@ -51,6 +65,19 @@ export const updateProject = asyncHandler(async (req: Request, res: Response, ne
     try {
         const { id } = req.body;
         if (!id) return next(new Error("ID is required"));
+
+        // Handle Cloudinary upload for thumbnail
+        if (req.body.thumbnail && req.body.thumbnail.startsWith('data:')) {
+            req.body.thumbnail = await uploadToCloudinary(req.body.thumbnail, 'projects/thumbnails');
+        }
+
+        // Handle Cloudinary upload for gallery images
+        if (req.body.images && Array.isArray(req.body.images)) {
+            const freshImages = req.body.images.filter((img: string) => img.startsWith('data:'));
+            const existingImages = req.body.images.filter((img: string) => !img.startsWith('data:'));
+            const uploadedImages = await uploadMultipleToCloudinary(freshImages, 'projects/gallery');
+            req.body.images = [...existingImages, ...uploadedImages];
+        }
         
         const result = await ProjectModel.findByIdAndUpdate(id, { $set: req.body }, { new: true });
         if (!result) return next(new Error("Not found"));

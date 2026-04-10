@@ -4,12 +4,18 @@ import { successResponseWithData } from "../../../utils/apiResponse";
 import { ERROR, SUCCESS } from "../../../utils/responseMssg";
 import { listing } from "../../../utils/functions";
 import asyncHandler from "express-async-handler";
+import { uploadToCloudinary } from "../../../services/cloudinary.service";
 
 export const addBlog = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { title, slug } = req.body;
         if (!title) return next(new Error("Title is required"));
         
+        // Handle Cloudinary upload for thumbnail
+        if (req.body.thumbnail && req.body.thumbnail.startsWith('data:')) {
+            req.body.thumbnail = await uploadToCloudinary(req.body.thumbnail, 'blogs/thumbnails');
+        }
+
         // Generate slug if missing
         const finalSlug = slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
         
@@ -67,6 +73,11 @@ export const updateBlog = asyncHandler(async (req: Request, res: Response, next:
     try {
         const { id } = req.body;
         if (!id) return next(new Error("ID is required"));
+
+        // Handle Cloudinary upload for thumbnail
+        if (req.body.thumbnail && req.body.thumbnail.startsWith('data:')) {
+            req.body.thumbnail = await uploadToCloudinary(req.body.thumbnail, 'blogs/thumbnails');
+        }
         
         const result = await BlogModel.findByIdAndUpdate(id, { $set: req.body }, { new: true });
         if (!result) return next(new Error("Not found"));

@@ -4,11 +4,17 @@ import { successResponseWithData } from "../../../utils/apiResponse";
 import { ERROR, SUCCESS } from "../../../utils/responseMssg";
 import { listing } from "../../../utils/functions";
 import asyncHandler from "express-async-handler";
+import { uploadToCloudinary } from "../../../services/cloudinary.service";
 
 export const addExperience = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { company, role } = req.body;
         if (!company || !role) return next(new Error("Company and Role are required"));
+
+        // Handle Cloudinary upload for logo
+        if (req.body.logo && req.body.logo.startsWith('data:')) {
+            req.body.logo = await uploadToCloudinary(req.body.logo, 'experience/logos');
+        }
 
         const result = await new ExperienceModel(req.body).save();
         successResponseWithData(res, "Experience added successfully", result);
@@ -51,6 +57,11 @@ export const updateExperience = asyncHandler(async (req: Request, res: Response,
     try {
         const { id } = req.body;
         if (!id) return next(new Error("ID is required"));
+
+        // Handle Cloudinary upload for logo
+        if (req.body.logo && req.body.logo.startsWith('data:')) {
+            req.body.logo = await uploadToCloudinary(req.body.logo, 'experience/logos');
+        }
         
         const result = await ExperienceModel.findByIdAndUpdate(id, { $set: req.body }, { new: true });
         if (!result) return next(new Error("Not found"));
