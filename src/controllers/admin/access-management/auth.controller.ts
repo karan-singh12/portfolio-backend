@@ -201,11 +201,11 @@ export const editProfile = async (req: AuthenticatedRequest, res: Response, next
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
       if (files['resume']) {
         const filePath = path.join(appRoot.path, files['resume'][0].path);
-        updateData.resumeUrl = await uploadToCloudinary(filePath, 'resumes');
+        updateData.resumeUrl = await uploadToCloudinary(filePath, 'resumes', 'raw');
       }
       if (files['avatar']) {
         const filePath = path.join(appRoot.path, files['avatar'][0].path);
-        updateData.avatarUrl = await uploadToCloudinary(filePath, 'avatars');
+        updateData.avatarUrl = await uploadToCloudinary(filePath, 'avatars', 'image');
       }
     }
 
