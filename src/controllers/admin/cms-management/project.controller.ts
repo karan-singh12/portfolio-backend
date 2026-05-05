@@ -42,7 +42,7 @@ export const getAllProjects = asyncHandler(async (req: Request, res: Response, n
             searchQuery.$or = [{ title: regex }, { description: regex }];
         }
 
-        const result = await listing(ProjectModel, [], searchQuery, {}, { createdAt: -1 }, pageNumber - 1, pageSize);
+        const result = await listing(ProjectModel, [], searchQuery, {}, { order: 1, createdAt: -1 }, pageNumber - 1, pageSize);
         const totalRecords = await ProjectModel.countDocuments(searchQuery);
 
         successResponseWithData(res, SUCCESS.dataFound, { result, totalRecords, pageNumber, pageSize });
