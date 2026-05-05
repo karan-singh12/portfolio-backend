@@ -8,10 +8,11 @@ export interface IProject extends Document {
         text: string;
         href: string;
     };
-    status: string; // "active" | "inactive" | "deleted"
+    status: string;
     category?: string;
     whatIDid?: string[];
     images?: string[];
+    order?: number;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -28,7 +29,8 @@ const ProjectSchema = new Schema<IProject>(
         status: { type: String, default: "active" },
         category: { type: String },
         whatIDid: { type: [String], default: [] },
-        images: { type: [String], default: [] }
+        images: { type: [String], default: [] },
+        order: { type: Number, default: 0 },
     },
     { timestamps: true }
 );
