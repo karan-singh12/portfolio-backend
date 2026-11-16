@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
 import asyncHandler from "express-async-handler";
-import nodemailer from "nodemailer";
+import { sendMail, ownerEmail, buildIcs } from "../../utils/mailer";
 import SiteConfigModel from "../../models/siteConfig.model";
 import ServiceModel from "../../models/service.model";
 import ExperienceModel from "../../models/experience.model";
@@ -35,6 +35,42 @@ siteRoutes.get("/services", asyncHandler(async (_req: Request, res: Response) =>
     successResponseWithData(res, SUCCESS.dataFound, result);
 }));
 
+/** Fire-and-forget booking emails with an .ics invite. Never throws. */
+function notifyBooking(doc: any) {
+    const owner = ownerEmail();
+    const when = doc.start.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "full", timeStyle: "short" });
+    const ics = buildIcs({
+        uid: String(doc._id), start: doc.start, end: doc.end,
+        summary: `Call: Karan Singh and ${doc.name}`,
+        description: `${doc.notes || "Intro call"}
+Booked via portfolio. Visitor time zone: ${doc.tz || "unknown"}`,
+        organizerEmail: owner || undefined, attendeeEmail: doc.email, attendeeName: doc.name,
+    });
+    const attachments = [{ filename: "call.ics", content: ics, contentType: "text/calendar; method=REQUEST" }];
+    if (owner) {
+        void sendMail({
+            to: owner, replyTo: doc.email, attachments,
+            subject: `[call booked] ${doc.name} · ${doc.durationMin} min · ${when} IST`,
+            text: `${doc.name} <${doc.email}>
+${when} IST (${doc.durationMin} min) · booker time zone: ${doc.tz || "?"}
+
+${doc.notes || ""}
+
+Open the attached call.ics to save it to your calendar. All bookings: admin panel > Interviews.`,
+        });
+    }
+    void sendMail({
+        to: doc.email, replyTo: owner || undefined, attachments,
+        subject: `Your call with Karan Singh is booked · ${when} IST`,
+        text: `Hi ${doc.name},
+
+Your ${doc.durationMin}-minute call is booked for ${when} IST.
+The attached call.ics adds it to your calendar. I will send the meeting link before the call.
+
+Karan Singh`,
+    });
+}
+
 // --- POST /user/site/lead : tiny in-memory rate limit (5 / 10min / IP) + honeypot ---
 const hits = new Map<string, number[]>();
 const WINDOW = 10 * 60 * 1000;
@@ -68,21 +104,17 @@ siteRoutes.post("/lead", asyncHandler(async (req: Request, res: Response, next: 
         ip,
     });
 
-    // Best-effort email notification; never fails the request.
-    if (process.env.EMAIL && process.env.PASS) {
-        try {
-            const transport = nodemailer.createTransport({
-                host: process.env.HOST, port: Number(process.env.EMAIL_PORT) || 587,
-                service: process.env.SERVICE, auth: { user: process.env.EMAIL, pass: process.env.PASS },
-            });
-            await transport.sendMail({
-                from: process.env.EMAIL, to: process.env.EMAIL,
-                subject: `[${b.source} portfolio] New inquiry from ${lead.name}`,
-                text: `${lead.name} <${lead.email}> ${lead.company ? `(${lead.company})` : ""}\n` +
-                      `Budget: ${lead.budget || "-"} | Timeline: ${lead.timeline || "-"} | Type: ${lead.projectType || "-"}\n\n${lead.message}`,
-            });
-        } catch (e) { console.warn("lead email failed", (e as Error).message); }
-    }
+    // Email in the background: the response never waits for (or fails because of) email.
+    void sendMail({
+        to: ownerEmail(),
+        replyTo: lead.email,
+        subject: `[${b.source} portfolio] New inquiry from ${lead.name}`,
+        text: `${lead.name} <${lead.email}> ${lead.company ? `(${lead.company})` : ""}
+` +
+              `Budget: ${lead.budget || "-"} | Timeline: ${lead.timeline || "-"} | Type: ${lead.projectType || "-"}
+
+${lead.message}`,
+    });
     successResponseWithData(res, "Thanks! I'll get back to you shortly.", { id: lead._id });
 }));
 
@@ -140,19 +172,9 @@ siteRoutes.post("/book", asyncHandler(async (req: Request, res: Response, next: 
     }).lean();
     if (clash) { await BookingModel.deleteOne({ _id: doc._id }); res.status(409); return next(new Error("That slot was just taken. Please pick another.")); }
 
-    if (process.env.EMAIL && process.env.PASS) {
-        try {
-            const transport = nodemailer.createTransport({ host: process.env.HOST, port: Number(process.env.EMAIL_PORT) || 587, service: process.env.SERVICE, auth: { user: process.env.EMAIL, pass: process.env.PASS } });
-            await transport.sendMail({
-                from: process.env.EMAIL, to: process.env.EMAIL,
-                subject: `[call booked] ${doc.name} · ${doc.durationMin} min`,
-                text: `${doc.name} <${doc.email}>
-${doc.start.toISOString()} (${doc.durationMin} min) · booker tz: ${doc.tz || "?"}
-
-${doc.notes || ""}`,
-            });
-        } catch (e) { console.warn("booking email failed", (e as Error).message); }
-    }
+    // Emails in the background (never block or fail the booking): one to the owner and one to the
+    // visitor, both with a calendar invite attached so the call can be saved to a calendar.
+    notifyBooking(doc);
     successResponseWithData(res, "Call booked", { id: doc._id, start, durationMin: dur });
 }));
 

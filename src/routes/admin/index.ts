@@ -5,6 +5,7 @@ import dsaRoutes from "./dsa.route";
 import experienceRoutes from "./experience.route";
 import dashboardRoutes from "./dashboard.route";
 import projectRoutes from "./project.route";
+import bookingRoutes from "./booking.route";
 
 const adminRouter = Router();
 
@@ -14,5 +15,6 @@ adminRouter.use("/blog", blogRoutes);
 adminRouter.use("/dsa", dsaRoutes);
 adminRouter.use("/experience", experienceRoutes);
 adminRouter.use("/project", projectRoutes);
+adminRouter.use("/booking", bookingRoutes);
 
 export default adminRouter;
