@@ -1,4 +1,4 @@
-import nodemailer, { Transporter } from "nodemailer";
+import { sendMail } from "./mailer";
 import { Document, Model, Types } from "mongoose";
 
 // Utility function to generate slugs from titles
@@ -60,35 +60,10 @@ interface EmailOptions {
   message: string;
 }
 
+// Sends through Resend (see utils/mailer.ts). Resolves 1 if sent, 0 if not (same contract as before).
 const sendEmail = async (options: EmailOptions): Promise<number> => {
-  return new Promise((resolve, reject) => {
-    const mailTransporter: Transporter = nodemailer.createTransport({
-      host: process.env.HOST,
-      port: Number(process.env.EMAIL_PORT),
-      auth: {
-        user: process.env.EMAIL,
-        pass: process.env.PASS,
-      },
-    });
-
-    const message = {
-      from: `Okready <${process.env.EMAIL}>`,
-      to: options.email,
-      subject: options.subject,
-      html: options.message,
-    };
-
-    mailTransporter
-      .sendMail(message)
-      .then(() => {
-        console.log("Email sent");
-        resolve(1);
-      })
-      .catch((error:any) => {
-        console.error("Error sending email", error);
-        resolve(0);
-      });
-  });
+  const ok = await sendMail({ to: options.email, subject: options.subject, text: options.message.replace(/<[^>]+>/g, " ").replace(/s+/g, " ").trim(), html: options.message });
+  return ok ? 1 : 0;
 };
 
 const projectFields = () => ({

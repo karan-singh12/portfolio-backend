@@ -1,14 +1,11 @@
-import nodemailer from "nodemailer";
-
 /**
- * Outgoing email that never blocks or breaks a request.
+ * Outgoing email via Resend (HTTPS API). It never blocks or breaks a request.
  *
- * - If RESEND_API_KEY is set, mail goes through Resend's HTTPS API (works where SMTP is blocked).
- *   Optional: MAIL_FROM (a sender on a domain verified in Resend; defaults to Resend's test sender).
- * - Otherwise it uses the existing SMTP settings (EMAIL, PASS, HOST, EMAIL_PORT, SERVICE) with short
- *   timeouts, so a blocked or slow SMTP server fails fast instead of hanging.
- * - Callers use `void sendMail(...)`: the HTTP response is never held up by email, and failures are
- *   only logged.
+ * Required env: RESEND_API_KEY.
+ * Optional env: MAIL_FROM (a sender on a domain verified in Resend, e.g. "Karan Singh <hello@yourdomain.com>";
+ *               defaults to Resend's test sender, which can only email the Resend account owner),
+ *               OWNER_EMAIL (where "call booked" / "new inquiry" mails go).
+ * Callers use `void sendMail(...)`: the HTTP response is never held up by email, and failures are only logged.
  */
 
 export interface MailAttachment {
@@ -21,13 +18,14 @@ export interface MailInput {
     to: string;
     subject: string;
     text: string;
+    html?: string;
     replyTo?: string;
     attachments?: MailAttachment[];
 }
 
-const SMTP_TIMEOUT_MS = 10_000;
+const TIMEOUT_MS = 10_000;
 
-export const ownerEmail = () => process.env.OWNER_EMAIL || process.env.EMAIL || "";
+export const ownerEmail = () => process.env.OWNER_EMAIL || "";
 
 async function viaResend(m: MailInput): Promise<boolean> {
     const key = process.env.RESEND_API_KEY;
@@ -41,53 +39,33 @@ async function viaResend(m: MailInput): Promise<boolean> {
             reply_to: m.replyTo,
             subject: m.subject,
             text: m.text,
+            html: m.html,
             attachments: m.attachments?.map((a) => ({
                 filename: a.filename,
                 content: Buffer.from(a.content, "utf8").toString("base64"),
             })),
         }),
-        signal: AbortSignal.timeout(SMTP_TIMEOUT_MS),
+        signal: AbortSignal.timeout(TIMEOUT_MS),
     });
-    if (!res.ok) throw new Error(`Resend HTTP ${res.status}`);
-    return true;
-}
-
-async function viaSmtp(m: MailInput): Promise<boolean> {
-    if (!process.env.EMAIL || !process.env.PASS) return false;
-    const transport = nodemailer.createTransport({
-        host: process.env.HOST,
-        port: Number(process.env.EMAIL_PORT) || 587,
-        service: process.env.SERVICE,
-        auth: { user: process.env.EMAIL, pass: process.env.PASS },
-        connectionTimeout: SMTP_TIMEOUT_MS,
-        greetingTimeout: SMTP_TIMEOUT_MS,
-        socketTimeout: SMTP_TIMEOUT_MS,
-    });
-    await transport.sendMail({
-        from: process.env.EMAIL,
-        to: m.to,
-        replyTo: m.replyTo,
-        subject: m.subject,
-        text: m.text,
-        attachments: m.attachments?.map((a) => ({ filename: a.filename, content: a.content, contentType: a.contentType })),
-    });
+    if (!res.ok) {
+        const detail = await res.text().catch(() => "");
+        throw new Error(`Resend HTTP ${res.status} (to ${m.to}): ${detail.slice(0, 300)}`);
+    }
     return true;
 }
 
 /** Never throws. Resolves true if some channel accepted the message. */
 export async function sendMail(m: MailInput): Promise<boolean> {
-    try {
-        if (await viaResend(m)) return true;
-    } catch (e) {
-        console.warn("[mail] Resend failed:", (e as Error).message);
+    if (!process.env.RESEND_API_KEY) {
+        console.warn(`[mail] not sent: RESEND_API_KEY is not set (${m.subject})`);
+        return false;
     }
     try {
-        if (await viaSmtp(m)) return true;
+        return await viaResend(m);
     } catch (e) {
-        console.warn("[mail] SMTP failed:", (e as Error).message);
+        console.warn("[mail] failed:", (e as Error).message);
+        return false;
     }
-    console.warn(`[mail] not sent (no working channel): ${m.subject}`);
-    return false;
 }
 
 const icsDate = (t: number | Date) => new Date(t).toISOString().replace(/[-:]|\.\d{3}/g, "");
