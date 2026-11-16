@@ -9,9 +9,10 @@ dotenv.config();
 
 import app from "./app";
 
-// Railway injects PORT; fall back to API_PORT for local dev
-const PORT = process.env.PORT || process.env.API_PORT || 3000;
+// Same as the previously working deploy: API_PORT first (the Railway domain targets it),
+// default host (all interfaces). PORT/3000 are only fallbacks when API_PORT is not set.
+const PORT = process.env.API_PORT || process.env.PORT || 3000;
 
-app.listen(Number(PORT), "0.0.0.0", () => {
+app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
 });
