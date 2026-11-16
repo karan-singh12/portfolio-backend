@@ -13,6 +13,12 @@ export interface IProject extends Document {
     whatIDid?: string[];
     images?: string[];
     order?: number;
+    // --- multi-portfolio keys (additive; old docs default to both audiences) ---
+    audience?: string[]; // "job" | "freelance"
+    featured?: boolean;
+    tags?: string[];
+    metrics?: { label: string; value: string }[];
+    caseStudy?: { problem?: string; solution?: string; outcome?: string };
     createdAt: Date;
     updatedAt: Date;
 }
@@ -31,6 +37,15 @@ const ProjectSchema = new Schema<IProject>(
         whatIDid: { type: [String], default: [] },
         images: { type: [String], default: [] },
         order: { type: Number, default: 0 },
+        audience: { type: [String], default: ["job", "freelance"], index: true },
+        featured: { type: Boolean, default: false },
+        tags: { type: [String], default: [] },
+        metrics: { type: [{ label: String, value: String, _id: false }], default: [] },
+        caseStudy: {
+            problem: String,
+            solution: String,
+            outcome: String,
+        },
     },
     { timestamps: true }
 );

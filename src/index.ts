@@ -9,8 +9,9 @@ dotenv.config();
 
 import app from "./app";
 
-const PORT = process.env.API_PORT;
+// Railway injects PORT; fall back to API_PORT for local dev
+const PORT = process.env.PORT || process.env.API_PORT || 3000;
 
-app.listen(PORT, () => {
+app.listen(Number(PORT), "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
 });

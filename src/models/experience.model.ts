@@ -11,6 +11,8 @@ export interface IExperience extends Document {
     technologies: string[];
     description: string;
     status: string; // "active" | "inactive"
+    audience?: string[]; // "job" | "freelance"
+    highlights?: string[];
     createdAt: Date;
     updatedAt: Date;
 }
@@ -26,7 +28,9 @@ const ExperienceSchema: Schema<IExperience> = new Schema(
         current: { type: Boolean, default: false },
         technologies: [{ type: String }],
         description: { type: String, required: true },
-        status: { type: String, default: 'active' }
+        status: { type: String, default: 'active' },
+        audience: { type: [String], default: ['job', 'freelance'], index: true },
+        highlights: { type: [String], default: [] },
     },
     { timestamps: true }
 );

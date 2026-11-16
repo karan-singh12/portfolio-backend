@@ -33,10 +33,12 @@ export const addProject = asyncHandler(async (req: Request, res: Response, next:
 
 export const getAllProjects = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { pageNumber = 1, pageSize = 10, searchItem, status } = req.body;
+        const { pageNumber = 1, pageSize = 10, searchItem, status, audience, featured } = req.body;
         const searchQuery: any = { status: { $ne: "deleted" } };
         
         if (status) searchQuery.status = status;
+        if (audience) searchQuery.audience = audience;
+        if (featured !== undefined) searchQuery.featured = featured;
         if (searchItem) {
             const regex = new RegExp(searchItem.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
             searchQuery.$or = [{ title: regex }, { description: regex }];
